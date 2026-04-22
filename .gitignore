@@ -1,2 +1,2 @@
 .env
-./db/init.sql
+db/init.sql
