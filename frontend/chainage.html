@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="styles/base.css">
+    <script type="module" src="scripts/chainage/chainage.js"></script>
     <title>Chainage</title>
 </head>
 
@@ -47,6 +48,30 @@
             <h1>Chaînages</h1>
         </div>
 
+        <form action="" method="post">
+
+            <input type="search" id="logiciel" name="logiciel" list="suggestions-recherche" required
+                placeholder="Logiciel, OS, Matériel ...">
+
+            <datalist id="suggestions-recherche">
+
+            </datalist>
+
+            <input type="text" name="version" id="version" required placeholder="Version...">
+
+            <button id="add">Ajouter</button>
+            <button id="submit" type="submit">Chercher</button>
+        </form>
+
+        <div id="softwares">
+
+        </div>
+
+        <p id="infos"></p>
+
+        <div id="data">
+
+        </div>
     </main>
 
 </body>

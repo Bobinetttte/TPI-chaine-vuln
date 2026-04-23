@@ -3,37 +3,35 @@ require_once("./../cors.php");
 require_once("./Functions.php");
 require_once("./../PDOConnection.php");
 
-header('Content-type: application/json; charset=utf-8');
-
 // Récupérer la méthode
 $method = $_SERVER['REQUEST_METHOD'];
 switch ($method) {
     case 'GET':
+        $software = filter_input(INPUT_GET, "software", FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+        $version = filter_input(INPUT_GET, "version", FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+        $useNist = filter_input(INPUT_GET, "nist", FILTER_VALIDATE_BOOLEAN);
 
-        try {
-            echo json_encode(getTenCve());
-            http_response_code("200");
-        } catch (\Throwable $th) {
-            echo json_encode("Erreur : " . $th);
-            http_response_code("500");
+        if (!isset($software) && !isset($version)) {
+            $response = getTwentyCve();
+        } 
+        elseif (!isset($useNist) || $useNist == false ) {
+            $response = searchCve(trim($software), trim($version));
         }
-        
-        break;
+        else {
+            $response = searchCveNist(trim($software), trim($version));
+        }
 
-    case 'POST':
-        http_response_code(response_code: 400);
-        break;
 
-    case 'PUT':
-        http_response_code(400);
-        break;
-
-    case 'DELETE':
-        http_response_code(400);
         break;
 
     default:
         // Requête inconnue -> retourner erreur
-        http_response_code(400);
+        $response["code"] = 400;
+        $response["result"]["error"] = "Methode non supportée";
         break;
 }
+
+http_response_code($response["code"]);
+header('Content-type: application/json; charset=utf-8');
+echo json_encode($response["result"]);
+exit;

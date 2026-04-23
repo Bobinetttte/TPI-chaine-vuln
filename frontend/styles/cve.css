@@ -1,0 +1,38 @@
+/* Elements */
+
+
+/* Classes */
+
+.cve-data {
+    width: 100%;
+
+    margin-left: 30px;
+}
+
+.cve-base-score {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    font-size: 21px;
+
+    height: fit-content;
+}
+
+.cve-base-score p {
+    margin: 0;
+}
+
+.cve-base-score-title {
+    border: 2px solid;
+    border-radius: 10px;
+
+    
+
+    padding-top: 5px;
+    padding-bottom: 5px;
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
+/* Id */
