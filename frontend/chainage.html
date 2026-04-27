@@ -5,7 +5,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="styles/base.css">
+    <link rel="stylesheet" href="styles/cve.css">
     <script type="module" src="scripts/chainage/chainage.js"></script>
+    <script type="module" src="scripts/cve/logiciel-list.js"></script>
     <title>Chainage</title>
 </head>
 
@@ -48,16 +50,20 @@
             <h1>Chaînages</h1>
         </div>
 
+        <div id="error">
+            <p>Merci de remplir tout les champs</p>
+        </div>
+
         <form action="" method="post">
 
-            <input type="search" id="logiciel" name="logiciel" list="suggestions-recherche" required
+            <input type="search" id="logiciel" name="logiciel" list="suggestions-recherche"
                 placeholder="Logiciel, OS, Matériel ...">
 
             <datalist id="suggestions-recherche">
 
             </datalist>
 
-            <input type="text" name="version" id="version" required placeholder="Version...">
+            <input type="text" name="version" id="version" placeholder="Version...">
 
             <button id="add">Ajouter</button>
             <button id="submit" type="submit">Chercher</button>

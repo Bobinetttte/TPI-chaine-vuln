@@ -1,3 +1,4 @@
 .env
 db/init.sql
 backend/secrets/PDO.php
+backend/secrets/infomaniak.php

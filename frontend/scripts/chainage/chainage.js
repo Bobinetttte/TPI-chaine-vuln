@@ -1,8 +1,10 @@
 import { cveCard } from '../Components/cve-card.js';
 
 const form = document.querySelector("form");
+const error = document.querySelector("#error");
 const buttonAdd = document.querySelector("#add");
 const data = document.querySelector("#data");
+const infos = document.querySelector("#infos");
 const softwares = document.querySelector("#softwares");
 
 let logiciel = document.querySelector("#logiciel");
@@ -14,18 +16,30 @@ let softv = [];
 buttonAdd.addEventListener("click", (event) => {
 
     event.preventDefault();
+    console.log(logiciel.value);
+    if (logiciel.value && version.value) {
 
-    if (logiciel.value != undefined && version.value != undefined) {
+
         softv.push([logiciel.value, version.value]);
         logiciel.value = "";
         version.value = "";
+
+        softwares.innerHTML = "";
+
+        softv.forEach(soft => {
+            softwares.innerHTML += "<div class='items'><p>" + soft[0] + " " + soft[1] + "</p></div>";
+        });
+
+        // Supprime l'erreur afficher si le formulaire est remplit
+        error.style.display = "none";
+
+    }
+    else {
+        // Affiche l'erreur si le formulaire est vide
+        error.style.display = "block";
     }
 
-    softwares.innerHTML = "";
 
-    softv.forEach(soft => {
-        softwares.innerHTML += "<div class='items'><p>" + soft[0] + " " + soft[1] + "</p></div>";
-    });
 
 });
 
@@ -35,10 +49,14 @@ form.addEventListener("submit", async (event) => {
 
     event.preventDefault();
 
+    error.style.display = "none";
 
     data.innerHTML = "";
 
-    softv.forEach(async soft => {
+    infos.textContent = "Les recherches sont en cours. Merci de ne pas recharger la page. Cela peut prendre plusieurs minutes";
+
+    for (const soft of softv) {
+
 
         let cves = await searchCveNIST(soft[0], soft[1]);
 
@@ -47,11 +65,14 @@ form.addEventListener("submit", async (event) => {
             data.innerHTML += cves["error"];
         } else {
             cves.forEach(cve => {
-                data.innerHTML += cveCard(cve["cveNumber"], cve["baseScore"], cve["softwareName"] + " " + cve["version"], cve["categoryName"]);
+                data.innerHTML += cveCard(cve["cveNumber"], cve["baseScore"],
+                    cve["softwareName"] + " " + cve["version"], cve["categoryName"]);
             });
         }
+    }
+    
+    infos.textContent = "Recherches terminées. Merci de votre patience";
 
-    });
 
 });
 

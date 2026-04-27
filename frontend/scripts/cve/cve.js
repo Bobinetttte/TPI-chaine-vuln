@@ -22,7 +22,7 @@ form.addEventListener("submit", async (event) => {
     } else {
 
         cves.forEach(cve => {
-            data.innerHTML += cveCard(cve["cveNumber"], cve["baseScore"], cve["softwareName"] + " " + cve["version"], cve["categoryName"]);
+            data.innerHTML += cveCard(cve["cveNumber"], cve["baseScore"], cve["softwareName"] + " " + cve["version"], cve["categories"]);
         });
 
     }
