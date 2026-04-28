@@ -11,10 +11,11 @@ switch ($method) {
         $version = filter_input(INPUT_GET, "version", FILTER_SANITIZE_FULL_SPECIAL_CHARS);
         $useNist = filter_input(INPUT_GET, "nist", FILTER_VALIDATE_BOOLEAN);
 
-        if (!isset($software) && !isset($version)) {
+
+        if (!isset($software, $version)) {
             $response = getTwentyCve();
-        } 
-        elseif (!isset($useNist) || $useNist == false ) {
+        }
+        elseif (!$useNist) {
             $response = searchCve(trim($software), trim($version));
         }
         else {

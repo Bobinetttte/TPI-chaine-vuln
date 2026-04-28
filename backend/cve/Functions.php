@@ -93,7 +93,7 @@ function searchCveWithCpe($cpe) : Array|Error {
         // Appeler l'api du NIST pour trouver le CPE exact
 
         $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, "https://services.nvd.nist.gov/rest/json/cves/2.0?cpeName=" . $cpe . "&resultsPerPage=100");
+        curl_setopt($ch, CURLOPT_URL, "https://services.nvd.nist.gov/rest/json/cves/2.0?cpeName=" . $cpe . "&resultsPerPage=1");
         // N'affiche pas le résultat automatiquement
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         $respNist = curl_exec($ch);
@@ -101,28 +101,50 @@ function searchCveWithCpe($cpe) : Array|Error {
 
         $respNistJSON = json_decode($respNist);
 
-        if (empty($respNistJSON->vulnerabilities)) {
-            throw new Exception("Aucun CVE trouvé pour ce CPE", 1);
+        if ($respNistJSON->totalResults == 0) {
+            throw new Exception("Aucun CVE trouvé pour ce CPE: " . $cpe, 1);
+        }
+        else {
+            if ($respNistJSON->totalResults <= 100) {
+                curl_setopt($ch, CURLOPT_URL, "https://services.nvd.nist.gov/rest/json/cves/2.0?cpeName=" . $cpe . "&resultsPerPage=" . $respNistJSON->totalResults);
+                // N'affiche pas le résultat automatiquement
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                $respNist = curl_exec($ch);
+            }
+            else {
+                $startIndex = $respNistJSON->totalResults - 100;
+                curl_setopt($ch, CURLOPT_URL, "https://services.nvd.nist.gov/rest/json/cves/2.0?cpeName=" . $cpe . "&resultsPerPage=100&startIndex=" . $startIndex);
+                // N'affiche pas le résultat automatiquement
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                $respNist = curl_exec($ch);
+            }
         }
 
+
+        $respNistJSON = json_decode($respNist);
         $cve = $respNistJSON->vulnerabilities;
 
 
         return $cve;
 }
 
-
-function searchCveNist($softName, $version) {
+/**
+ * Renvoie touts les CVE traité avec leur catégorie déterminer par le LLM et les sauvegarde dans la bdd
+ * @param String $softName : Nom du logiciel
+ * @param String $version : Version du logiciel
+ * @return Array Retourne touts les CVE traité avec leur catégorie ou une erreur
+ */
+function searchCveNist($softName, $version) : Array {
         $response = [
         "code" => 200,
         "result" => []
     ];
 
 
-    if ($softName == "" || $version == "") {
+    if ($softName == "") {
 
-        $response["code"] = 403;
-        $response["result"]["error"] = "Erreur : Le nom du logiciel ou sa version est vide";
+        $response["code"] = 400;
+        $response["result"]["error"] = "Erreur : Le nom du logiciel est vide";
 
         return $response;
     }
@@ -132,84 +154,87 @@ function searchCveNist($softName, $version) {
         // Point 2 et 3 de l'algorythme
         $cpe = findCPE($softName, $version);
 
-        if ($cpe == null) {
-            throw new Exception("Aucun CPE trouvé", 1);
-        }
+       if ($cpe == null) {
+            $response["code"] = 404;
+            $response["result"]["error"] = "Erreur : Aucun CPE trouvé pour" . $softName . " " . $version;
+            return $response;
 
-        saveCPE($softName, $version, $cpe);
+       }
 
-        // Point 4 et 5 de l'algorythme
-        $cves = searchCveWithCpe($cpe);
+       saveCPE($softName, $version, $cpe);
 
-        $cvesClean = [];
+       // Point 4 et 5 de l'algorythme
+       $cves = searchCveWithCpe($cpe);
 
-        foreach ($cves as $key => $cve) {
-            $exploitabilityScore = null;
-            $impactScore = null;
-            $baseScore = null;
+       $cvesClean = [];
 
-            $cveId = $cve->cve->id;
-            $publishedDate = new DateTime($cve->cve->published);
-            $publishedDate = $publishedDate->format("Y-m-d");
+       foreach ($cves as $key => $cve) {
+           $exploitabilityScore = null;
+           $impactScore = null;
+           $baseScore = null;
 
-            $lastModifiedDate = new DateTime($cve->cve->lastModified);
-            $lastModifiedDate = $lastModifiedDate->format("Y-m-d");
+           $cveId = $cve->cve->id;
+           $publishedDate = new DateTime($cve->cve->published);
+           $publishedDate = $publishedDate->format("Y-m-d");
 
-            $status = $cve->cve->vulnStatus;
-            $description = $cve->cve->descriptions[0]->value;
+           $lastModifiedDate = new DateTime($cve->cve->lastModified);
+           $lastModifiedDate = $lastModifiedDate->format("Y-m-d");
 
-
-            // Vérifie la version du cvss pour trouver des scores d'impact défini
-            if (!empty($cve->cve->metrics->cvssMetricV31)) {
-                $exploitabilityScore = $cve->cve->metrics->cvssMetricV31[0]->exploitabilityScore;
-                $impactScore = $cve->cve->metrics->cvssMetricV31[0]->impactScore;
-                $baseScore = $cve->cve->metrics->cvssMetricV31[0]->cvssData->baseScore;
-
-            } 
-            elseif (!empty($cve->cve->metrics->cvssMetricV3)){
-                $exploitabilityScore = $cve->cve->metrics->cvssMetricV3[0]->exploitabilityScore;
-                $impactScore = $cve->cve->metrics->cvssMetricV3[0]->impactScore;
-                $baseScore = $cve->cve->metrics->cvssMetricV3[0]->cvssData->baseScore;
-
-            } elseif (!empty($cve->cve->metrics->cvssMetricV2)) {
-                $exploitabilityScore = $cve->cve->metrics->cvssMetricV2[0]->exploitabilityScore;
-                $impactScore = $cve->cve->metrics->cvssMetricV2[0]->impactScore;
-                $baseScore = $cve->cve->metrics->cvssMetricV2[0]->cvssData->baseScore;
-            }
-
-            
-
-            $cvesClean[$cveId] = [
-                "cveNumber" => $cveId,
-                "published" => $publishedDate,
-                "lastModified" => $lastModifiedDate,
-                "status" => $status,
-                "description" => $description,
-                "exploitabilityScore" => $exploitabilityScore,
-                "impactScore" => $impactScore,
-                "baseScore" => $baseScore,
-                "softwareName" => $softName,
-                "version" => $version,
-                "categoryName" => "",
-            ];
+           $status = $cve->cve->vulnStatus;
+           $description = $cve->cve->descriptions[0]->value;
 
 
-            saveCVE($cveId, $publishedDate, $lastModifiedDate, $status,
-            $description, $exploitabilityScore, $impactScore, $baseScore);
+           // Vérifie la version du cvss pour trouver des scores d'impact défini
+           if (!empty($cve->cve->metrics->cvssMetricV31)) {
+               $exploitabilityScore = $cve->cve->metrics->cvssMetricV31[0]->exploitabilityScore;
+               $impactScore = $cve->cve->metrics->cvssMetricV31[0]->impactScore;
+               $baseScore = $cve->cve->metrics->cvssMetricV31[0]->cvssData->baseScore;
 
-            saveVersionLinkCve($cveId, $cpe);
-        }
+           } 
+           elseif (!empty($cve->cve->metrics->cvssMetricV3)){
+               $exploitabilityScore = $cve->cve->metrics->cvssMetricV3[0]->exploitabilityScore;
+               $impactScore = $cve->cve->metrics->cvssMetricV3[0]->impactScore;
+               $baseScore = $cve->cve->metrics->cvssMetricV3[0]->cvssData->baseScore;
 
-        // Point 6 et 7 de l'algorythme
-        $cve_category = json_decode(findCategoryWithLLM($cvesClean));
+           } elseif (!empty($cve->cve->metrics->cvssMetricV2)) {
+               $exploitabilityScore = $cve->cve->metrics->cvssMetricV2[0]->exploitabilityScore;
+               $impactScore = $cve->cve->metrics->cvssMetricV2[0]->impactScore;
+               $baseScore = $cve->cve->metrics->cvssMetricV2[0]->cvssData->baseScore;
+           }
 
-        foreach ($cve_category as $key => $value) {
-            saveCategory($value->cveNumber, $value->categoryName);
-            $cvesClean[$value->cveNumber]["categoryName"] = $value->categoryName;
-        }
+           
+
+           $cvesClean[$cveId] = [
+               "cveNumber" => $cveId,
+               "published" => $publishedDate,
+               "lastModified" => $lastModifiedDate,
+               "status" => $status,
+               "description" => $description,
+               "exploitabilityScore" => $exploitabilityScore,
+               "impactScore" => $impactScore,
+               "baseScore" => $baseScore,
+               "softwareName" => $softName,
+               "version" => $version,
+               "categoryName" => "",
+           ];
+
+
+           saveCVE($cveId, $publishedDate, $lastModifiedDate, $status,
+           $description, $exploitabilityScore, $impactScore, $baseScore);
+
+           saveVersionLinkCve($cveId, $cpe);
+       }
+
+       // Point 6 et 7 de l'algorythme
+       $cve_category = json_decode(findCategoryWithLLM($cvesClean));
+
+       foreach ($cve_category as $key => $value) {
+           saveCategory($value->cveNumber, $value->categoryName);
+           $cvesClean[$value->cveNumber]["categoryName"] = $value->categoryName;
+       }
         
         // array_values() evite d'avoir un objet à cause du cveId en clé. Transforme en array pour le front
-        $response["result"] = array_values($cvesClean);
+        $response["result"]["cve"] = array_values($cvesClean);
 
 
     } catch (\Throwable $th) {
@@ -229,6 +254,11 @@ function searchCveNist($softName, $version) {
  */
 function findCPE($softName, $version) {
     try {
+
+        if (empty($version)) {
+            $version = "-";
+        }
+
         $db = connectDb();
 
         $sql = "SELECT cpeMatchWithoutVersion FROM software WHERE softwareName = :softName;";
@@ -239,19 +269,16 @@ function findCPE($softName, $version) {
         // Si retourne rien alors false
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if($row == false) {
+        if($row === false) {
             throw new Exception("Logiciel, OS ou matériel inconnu", 1);
         }
 
-        $cpeWithoutVersion = $stmt->fetch()["cpeMatchWithoutVersion"];
-
-
+        $cpeWithoutVersion = $row["cpeMatchWithoutVersion"];
 
         $cpeMatch = $cpeWithoutVersion . ":" . $version;
 
 
         // Appeler l'api du NIST pour trouver le CPE exact
-
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, "https://services.nvd.nist.gov/rest/json/cpes/2.0?cpeMatchString=" . $cpeMatch);
         // N'affiche pas le résultat automatiquement
@@ -261,10 +288,29 @@ function findCPE($softName, $version) {
 
         $respNistJSON = json_decode($respNist);
 
-        if (empty($respNistJSON->products)) {
+        if (empty($respNistJSON->totalResults) || ($respNistJSON->totalResults == 0 && $version == "*")) {
             throw new Exception("Aucun CPE trouvé pour cette version", 1);
         }
+        elseif ($version == "-") {
+            // Refaire une recherche CPE si rien trouvé avec la version "-"
 
+            $version = "*";
+
+            $cpeMatch = $cpeWithoutVersion . ":" . $version;
+
+            // Appeler l'api du NIST pour trouver le CPE exact
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, "https://services.nvd.nist.gov/rest/json/cpes/2.0?cpeMatchString=" . $cpeMatch);
+            // N'affiche pas le résultat automatiquement
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            $respNist = curl_exec($ch);
+        }
+        $respNistJSON = json_decode($respNist);
+
+        if (empty($respNistJSON->totalResults) || $respNistJSON->totalResults == 0) {
+            throw new Exception("Aucun CPE trouvé pour cette version", 1);
+        }
+        
         $cpe = $respNistJSON->products[0]->cpe->cpeName;
 
 

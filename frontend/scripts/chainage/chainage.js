@@ -17,7 +17,7 @@ buttonAdd.addEventListener("click", (event) => {
 
     event.preventDefault();
     console.log(logiciel.value);
-    if (logiciel.value && version.value) {
+    if (logiciel.value) {
 
 
         softv.push([logiciel.value, version.value]);
@@ -53,23 +53,33 @@ form.addEventListener("submit", async (event) => {
 
     data.innerHTML = "";
 
+    let allCve = [];
+
     infos.textContent = "Les recherches sont en cours. Merci de ne pas recharger la page. Cela peut prendre plusieurs minutes";
 
     for (const soft of softv) {
 
 
         let cves = await searchCveNIST(soft[0], soft[1]);
-
+        allCve.push(cves);
         // Gestion des erreurs
         if (cves["error"] !== undefined) {
             data.innerHTML += cves["error"];
         } else {
-            cves.forEach(cve => {
+            cves["cve"].forEach(cve => {
                 data.innerHTML += cveCard(cve["cveNumber"], cve["baseScore"],
                     cve["softwareName"] + " " + cve["version"], cve["categoryName"]);
             });
         }
+
+
     }
+
+    infos.textContent = "Création des associations. Merci de ne pas recharger la page. Cela peut prendre plusieurs minutes";
+    let associations = await createAsso(allCve);
+
+    console.log(associations);
+
     
     infos.textContent = "Recherches terminées. Merci de votre patience";
 
@@ -82,10 +92,31 @@ form.addEventListener("submit", async (event) => {
  * Fetch l'api du tpi pour recevoir tout les CVE selon le nom et la version du logiciel grace à l'api du NIST
  * @param String software : Nom du logiciel
  * @param String version : Version du logiciel
- * @return Json CVE une erreur
+ * @return Json retourne des CVE ou une erreur
  */
 async function searchCveNIST(software, version) {
     const cve = await fetch("http://api.tpi.local/cve/GetCve.php?software=" + software + "&version=" + version + "&nist=true");
     const result = await cve.json();
+    return result;
+}
+
+
+/**
+ * Fetch l'api du tpi pour créer des chainages puis recevoir des associations
+ * @param Array cveListJSON : Liste de tout les CVE retourner de chaque logiciel, OS et/ou materiels
+ * @return Json retourne des associations ou une erreur
+ */
+async function createAsso(cveList) {
+
+    const associations = await fetch("http://api.tpi.local/associations/CreateAssociations.php?chainSearch=true", {
+        method: "POST",
+        headers: {
+            // Dis au serveur qu'on envoie du JSON
+            'Content-Type': 'application/json' 
+        },
+        body: JSON.stringify(cveList)
+    });
+    const result = await associations.json();
+    console.log(result);
     return result;
 }
