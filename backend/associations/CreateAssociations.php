@@ -13,6 +13,12 @@ switch ($method) {
             try {
                 $body = file_get_contents('php://input');
                 $jsonCve = json_decode($body);
+
+                if (count($jsonCve) <= 1) {
+                    $response["code"] = 200;
+                    $response["result"]["associations"] = [];
+                    break;
+                }
                 
                 $chains = createChains($jsonCve);
                 
@@ -24,7 +30,7 @@ switch ($method) {
                 }
 
                 $response["code"] = 200;
-                $response["result"] = $associations;
+                $response["result"]["associations"] = $associations;
 
 
             } catch (\Throwable $th) {

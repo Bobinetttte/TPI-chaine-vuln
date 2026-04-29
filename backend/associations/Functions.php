@@ -56,6 +56,12 @@ function createChains($cves) {
 
         If no valid chain exists, return an empty array [].
 
+        If you recieve a lot of CVE, make a maxiumum of 5 associations.
+        Remember, an association can have at least 2 cve but can have more. But never twice the same.
+        Remember, the ultimate goal for a chain is that the user can become root or administrator on the target.
+
+        It is better to utilise differente software/OS/hardware CVE than 3 CVE of one same software/OS/hardware.
+
         Return only valid JSON.
         Answer in french.
         ';
@@ -203,7 +209,14 @@ function saveChain($chain) {
     }
 }
 
-function getAssociation($associationId) {
+
+
+/**
+ * Donne toutes les infos de base d'une association
+ * @param String $associationId : Id de l'association recherché
+ * @return Array $response : Retourne un tableau avec toutes les infos de base ou une erreur
+ */
+function getAssociation($associationId) : Array|Error {
     try {
 
         $association = [];
@@ -226,8 +239,9 @@ function getAssociation($associationId) {
 
         $categoryNameStart = $stmt->fetch();
 
-        if ($categoryNameStart["categoryName"] == null) {
-            $response["result"]["error"] = "Aucune categorie trouvée";
+        if (!$categoryNameStart || $categoryNameStart["categoryName"] == null) {
+            $response["error"] = "Aucune categorie trouvée";
+            return $response;
         }
 
         $association["categoryNameStart"] = $categoryNameStart["categoryName"];
@@ -253,7 +267,8 @@ function getAssociation($associationId) {
         $categoryNameEnd = $stmt->fetch();
 
         if ($categoryNameEnd["categoryName"] == null) {
-            $response["result"]["error"] = "Aucune categorie trouvée";
+            $response["error"] = "Aucune categorie trouvée";
+            return $response;
         }
 
         $association["categoryNameEnd"] = $categoryNameEnd["categoryName"];
@@ -272,17 +287,110 @@ function getAssociation($associationId) {
 
         $cveIds = $stmt->fetchAll();
 
-        //if ($categoryNameEnd["categoryName"] == null) {
-        //    $response["result"]["error"] = "Aucune categorie trouvée";
-        //}
+        if ($cveIds[0]["cveId"] == null) {
+            $response["error"] = "Aucun CVE trouvé";
+            return $response;
+        }
 
         $association["cvesId"] = $cveIds;
 
 
+        foreach ($cveIds as $key => $cveId) {
 
-        $response["associations"] = $association;
+            // Obtenir les version
+            $sql = "SELECT v.version, v.versionId
+            FROM cve_version cv
+            LEFT JOIN version v ON v.versionId = cv.versionId
+            WHERE cv.cveId = :cveId;";
+
+            $stmt = $db->prepare($sql);
+            $stmt->execute([
+                'cveId' => $cveId["cveId"]
+            ]);
+
+            $version = $stmt->fetch();
+
+            if ($version["versionId"] == null || !$version) {
+                $response["error"] = "Aucune version trouvé";
+                return $response;
+            }
+
+            $association["versions"][] = $version["version"];
+
+
+            // Obtenir les noms des logiciels/os/matériel
+            $sql = "SELECT s.softwareName
+            FROM software s
+            LEFT JOIN version v ON v.softwareId = s.softwareId
+            WHERE v.versionId = :versionId;";
+    
+            $stmt = $db->prepare($sql);
+            $stmt->execute([
+                'versionId' => $version["versionId"]
+            ]);
+            
+            $softName = $stmt->fetch();
+
+            if ($softName["softwareName"] == null || !$softName) {
+                $response["error"] = "Aucun nom trouvé";
+                return $response;
+            }
+
+            $association["softNames"][] = $softName["softwareName"];
+
+        }
+
+
+        // Obtenir le score
+        $sql = "SELECT score FROM association WHERE associationId = :assoId;";
+    
+        $stmt = $db->prepare($sql);
+        $stmt->execute([
+            'assoId' => $associationId
+        ]);
+        
+        $assoScore = $stmt->fetch();
+
+        if ($assoScore == null || !$assoScore) {
+            $response["error"] = "Aucun score trouvé";
+            return $response;
+        }
+
+        $association["score"] = $assoScore["score"];
+
+
+        $response = $association;
 
         return $response;
+
+    } catch (\Throwable $th) {
+        "Erreur : " . $th->getMessage();
+    }
+}
+
+/**
+ * Donne 10 ids d'associations
+ * @return Array Retourne un tableau avec 10 ids ou une erreur
+ */
+function getTenAssociationIds() : Array|Error {
+    try {
+
+        $db = connectDb();
+
+        // Obtenir le score
+        $sql = "SELECT associationId FROM association ORDER BY score DESC LIMIT 10;";
+    
+        $stmt = $db->query($sql);
+        
+        $assoIds = $stmt->fetchAll();
+
+        if ($assoIds == null) {
+            $response["error"] = "Aucune association trouvé";
+            return $response;
+        }
+
+        
+        return $assoIds;
 
     } catch (\Throwable $th) {
         "Erreur : " . $th->getMessage();

@@ -18,13 +18,15 @@ function getTwentyCve() : Array {
     try {
         $db = connectDb();
 
-        $sql = "SELECT c.cveNumber, c.baseScore, s.softwareName, v.version, cat.categoryName
+        $sql = "SELECT GROUP_CONCAT(DISTINCT c.cveNumber) as cveNumber, c.baseScore,
+        s.softwareName, v.version, cat.categoryName
         FROM cve c 
         LEFT JOIN cve_version cv ON cv.cveId = c.cveId 
         LEFT JOIN version v ON v.versionId = cv.versionId 
         LEFT JOIN software s ON s.softwareId = v.softwareId 
         LEFT JOIN cve_category cc ON cc.cveId = c.cveId 
         LEFT JOIN category cat ON cat.categoryId = cc.categoryId 
+        GROUP BY c.cveNumber
         LIMIT 20;";
 
         $result = $db->query($sql);
@@ -101,7 +103,7 @@ function searchCveWithCpe($cpe) : Array|Error {
 
         $respNistJSON = json_decode($respNist);
 
-        if ($respNistJSON->totalResults == 0) {
+        if (!isset($respNistJSON->totalResults) ||$respNistJSON->totalResults == 0) {
             throw new Exception("Aucun CVE trouvé pour ce CPE: " . $cpe, 1);
         }
         else {
@@ -112,7 +114,7 @@ function searchCveWithCpe($cpe) : Array|Error {
                 $respNist = curl_exec($ch);
             }
             else {
-                $startIndex = $respNistJSON->totalResults - 100;
+                $startIndex = rand(100, $respNistJSON->totalResults) - 100;
                 curl_setopt($ch, CURLOPT_URL, "https://services.nvd.nist.gov/rest/json/cves/2.0?cpeName=" . $cpe . "&resultsPerPage=100&startIndex=" . $startIndex);
                 // N'affiche pas le résultat automatiquement
                 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -124,6 +126,9 @@ function searchCveWithCpe($cpe) : Array|Error {
         $respNistJSON = json_decode($respNist);
         $cve = $respNistJSON->vulnerabilities;
 
+        if ($cve == null) {
+            throw new Exception("Aucun CVE trouvé pour ce CPE: " . $cpe, 1);
+        }
 
         return $cve;
 }
@@ -286,30 +291,45 @@ function findCPE($softName, $version) {
         $respNist = curl_exec($ch);
 
 
+
         $respNistJSON = json_decode($respNist);
-
-        if (empty($respNistJSON->totalResults) || ($respNistJSON->totalResults == 0 && $version == "*")) {
-            throw new Exception("Aucun CPE trouvé pour cette version", 1);
-        }
-        elseif ($version == "-") {
+        
+        if (empty($respNistJSON->totalResults) || $respNistJSON->totalResults == 0) {
             // Refaire une recherche CPE si rien trouvé avec la version "-"
-
+        
             $version = "*";
-
+        
             $cpeMatch = $cpeWithoutVersion . ":" . $version;
-
+        
             // Appeler l'api du NIST pour trouver le CPE exact
             $ch = curl_init();
             curl_setopt($ch, CURLOPT_URL, "https://services.nvd.nist.gov/rest/json/cpes/2.0?cpeMatchString=" . $cpeMatch);
             // N'affiche pas le résultat automatiquement
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             $respNist = curl_exec($ch);
-        }
-        $respNistJSON = json_decode($respNist);
+            $respNistJSON = json_decode($respNist);
 
-        if (empty($respNistJSON->totalResults) || $respNistJSON->totalResults == 0) {
-            throw new Exception("Aucun CPE trouvé pour cette version", 1);
+            if (empty($respNistJSON->totalResults) || $respNistJSON->totalResults == 0) {
+                // Refaire une recherche CPE si rien trouvé avec rien
+                
+                $version = "";
+                
+                $cpeMatch = $cpeWithoutVersion;
+                
+                // Appeler l'api du NIST pour trouver le CPE exact
+                $ch = curl_init();
+                curl_setopt($ch, CURLOPT_URL, "https://services.nvd.nist.gov/rest/json/cpes/2.0?cpeMatchString=" . $cpeMatch);
+                // N'affiche pas le résultat automatiquement
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                $respNist = curl_exec($ch);
+                $respNistJSON = json_decode($respNist);
+
+                if (empty($respNistJSON->totalResults) || $respNistJSON->totalResults == 0){
+                    throw new Exception("Aucun CPE pour cette version", 1);
+                }
+            } 
         }
+
         
         $cpe = $respNistJSON->products[0]->cpe->cpeName;
 

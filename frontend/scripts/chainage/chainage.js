@@ -1,9 +1,11 @@
 import { cveCard } from '../Components/cve-card.js';
+import { associationCard } from '../Components/association-card.js';
 
 const form = document.querySelector("form");
 const error = document.querySelector("#error");
 const buttonAdd = document.querySelector("#add");
 const data = document.querySelector("#data");
+const associationsDiv = document.querySelector("#associations");
 const infos = document.querySelector("#infos");
 const softwares = document.querySelector("#softwares");
 
@@ -52,12 +54,14 @@ form.addEventListener("submit", async (event) => {
     error.style.display = "none";
 
     data.innerHTML = "";
+    associationsDiv.innerHTML = "";
 
     let allCve = [];
 
     infos.textContent = "Les recherches sont en cours. Merci de ne pas recharger la page. Cela peut prendre plusieurs minutes";
 
     for (const soft of softv) {
+        infos.textContent = "Les recherches sont en cours pour "+ soft[0] + " "+ soft[1] +". Merci de ne pas recharger la page. Cela peut prendre plusieurs minutes";
 
 
         let cves = await searchCveNIST(soft[0], soft[1]);
@@ -78,7 +82,17 @@ form.addEventListener("submit", async (event) => {
     infos.textContent = "Création des associations. Merci de ne pas recharger la page. Cela peut prendre plusieurs minutes";
     let associations = await createAsso(allCve);
 
-    console.log(associations);
+    associations.associations.forEach(association => {
+        console.log(association);
+
+        if (association["error"] === undefined) {
+            associationsDiv.innerHTML += associationCard(association["categoryNameStart"], association["categoryNameEnd"], association["cvesId"],
+            association["versions"], association["softNames"], association["score"]);
+        }
+
+
+    });
+
 
     
     infos.textContent = "Recherches terminées. Merci de votre patience";
@@ -117,6 +131,5 @@ async function createAsso(cveList) {
         body: JSON.stringify(cveList)
     });
     const result = await associations.json();
-    console.log(result);
     return result;
 }
