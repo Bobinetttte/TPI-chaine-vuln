@@ -1,0 +1,37 @@
+/* Elements */
+
+
+/* Classes */
+
+.mini-title {
+    font-weight: bold;
+}
+
+
+/* Id */
+
+#data {
+    display: flex;
+    flex-direction: column;
+}
+
+#infos, #metrics {
+    border: 2px solid rgba(109, 109, 109, 0.26);
+    border-radius: 15px;
+
+    display: flex;
+    flex-direction: row;
+
+    justify-content: space-around;
+}
+
+#title {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+#title h1 {
+    margin: 0;
+}

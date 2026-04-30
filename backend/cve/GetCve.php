@@ -10,9 +10,13 @@ switch ($method) {
         $software = filter_input(INPUT_GET, "software", FILTER_SANITIZE_FULL_SPECIAL_CHARS);
         $version = filter_input(INPUT_GET, "version", FILTER_SANITIZE_FULL_SPECIAL_CHARS);
         $useNist = filter_input(INPUT_GET, "nist", FILTER_VALIDATE_BOOLEAN);
+        $cveNumber = filter_input(INPUT_GET, "cveNumber", FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 
 
-        if (!isset($software, $version)) {
+        if(isset($cveNumber)) {
+            $response = getOneCve($cveNumber);
+        }
+        elseif (!isset($software, $version)) {
             $response = getTwentyCve();
         }
         elseif (!$useNist) {
@@ -21,7 +25,6 @@ switch ($method) {
         else {
             $response = searchCveNist(trim($software), trim($version));
         }
-
 
         break;
 

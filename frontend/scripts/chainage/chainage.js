@@ -61,7 +61,7 @@ form.addEventListener("submit", async (event) => {
     infos.textContent = "Les recherches sont en cours. Merci de ne pas recharger la page. Cela peut prendre plusieurs minutes";
 
     for (const soft of softv) {
-        infos.textContent = "Les recherches sont en cours pour "+ soft[0] + " "+ soft[1] +". Merci de ne pas recharger la page. Cela peut prendre plusieurs minutes";
+        infos.textContent = "Les recherches sont en cours pour " + soft[0] + " " + soft[1] + ". Merci de ne pas recharger la page. Cela peut prendre plusieurs minutes";
 
 
         let cves = await searchCveNIST(soft[0], soft[1]);
@@ -83,20 +83,48 @@ form.addEventListener("submit", async (event) => {
     let associations = await createAsso(allCve);
 
     associations.associations.forEach(association => {
-        console.log(association);
 
         if (association["error"] === undefined) {
             associationsDiv.innerHTML += associationCard(association["categoryNameStart"], association["categoryNameEnd"], association["cvesId"],
-            association["versions"], association["softNames"], association["score"]);
+                association["versions"], association["softNames"], association["score"], association["idAsso"]);
         }
 
 
     });
 
 
-    
+
     infos.textContent = "Recherches terminées. Merci de votre patience";
 
+
+});
+
+
+// Quand on clique pour modifier le score d'une association
+associationsDiv.addEventListener("click", async (event) => {
+    const card = event.target.closest(".card");
+    const btn = event.target.closest(".association-btn-up, .association-btn-down");
+    const divScore = event.target.closest(".association-score");
+
+    if (card != null && btn != null) {
+
+        let idAsso = card.id;
+        let action = "up";
+
+        let score = divScore.querySelector("p");
+
+        if (btn.attributes.class.nodeValue == "association-btn-down") {
+            action = "down";
+            score.textContent = parseInt(score.textContent) - 1;
+        }
+        else {
+            score.textContent = parseInt(score.textContent) + 1;
+        }
+
+
+        await updateAssociation(idAsso, action);
+
+    }
 
 });
 
@@ -126,10 +154,23 @@ async function createAsso(cveList) {
         method: "POST",
         headers: {
             // Dis au serveur qu'on envoie du JSON
-            'Content-Type': 'application/json' 
+            'Content-Type': 'application/json'
         },
         body: JSON.stringify(cveList)
     });
     const result = await associations.json();
     return result;
+}
+
+/**
+ * Fetch l'api du tpi pour mettre à jour le score d'une association
+ * @param Int idAsso : Id de l'association cible
+ * @param String action : action souhaitée (up/down)
+ */
+async function updateAssociation(idAsso, action) {
+
+    const association = await fetch("http://api.tpi.local/associations/UpdateAssociation.php?id=" + idAsso + "&action=" + action, {
+        method: "UPDATE",
+    });
+
 }

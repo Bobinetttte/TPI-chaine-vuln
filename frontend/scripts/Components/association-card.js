@@ -1,6 +1,6 @@
 
 
-export function associationCard(catStart, catEnd, cves, versions, softNames, score) {
+export function associationCard(catStart, catEnd, cves, versions, softNames, score, assoId) {
 
     let listSoftHTML = "";
     versions.forEach((version, index) => {
@@ -8,8 +8,8 @@ export function associationCard(catStart, catEnd, cves, versions, softNames, sco
     });
 
     let card = `
-                <div class="card">
-                <h3>`+ catStart + ` ⟹ ` + catEnd + `</h3>
+                <div class="card" id="`+ assoId +`">
+                <a href="association.html?associationId=`+ assoId +`"><h3>`+ catStart + ` ⟹ ` + catEnd + `</h3></a>
                 <div class="association-data">
 
                     <div class="association-softwares">
@@ -22,8 +22,8 @@ export function associationCard(catStart, catEnd, cves, versions, softNames, sco
                         <div class="association-score">
                             <p>`+ score + `</p>
                             <div>
-                                <button>△</button>
-                                <button>▽</button>
+                                <button class="association-btn-up" >△</button>
+                                <button class="association-btn-down" >▽</button>
                         </div>
                     </div>
                 </div>

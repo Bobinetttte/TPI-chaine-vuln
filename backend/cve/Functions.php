@@ -18,20 +18,60 @@ function getTwentyCve() : Array {
     try {
         $db = connectDb();
 
+        // INNER JOIN pour éviter les categories null
         $sql = "SELECT GROUP_CONCAT(DISTINCT c.cveNumber) as cveNumber, c.baseScore,
         s.softwareName, v.version, cat.categoryName
         FROM cve c 
         LEFT JOIN cve_version cv ON cv.cveId = c.cveId 
         LEFT JOIN version v ON v.versionId = cv.versionId 
         LEFT JOIN software s ON s.softwareId = v.softwareId 
-        LEFT JOIN cve_category cc ON cc.cveId = c.cveId 
-        LEFT JOIN category cat ON cat.categoryId = cc.categoryId 
+        INNER JOIN cve_category cc ON cc.cveId = c.cveId 
+        INNER JOIN category cat ON cat.categoryId = cc.categoryId 
         GROUP BY c.cveNumber
         LIMIT 20;";
 
         $result = $db->query($sql);
 
          $response["result"] = $result->fetchAll();
+
+    } catch (\Throwable $th) {
+        $response["code"] = 500;
+        $response["result"]["error"] = "Erreur : " . $th->getMessage();
+    }
+
+    return $response;
+}
+
+/**
+ * Renvoie toutes les informations que possède un seul CVE
+ *
+ * @return String $cveNumber : Numéro de CVE
+ */
+function getOneCve($cveNumber) : Array {
+    $response = [
+        "code" => 200,
+        "result" => []
+    ];
+
+    try {
+        $db = connectDb();
+
+        $sql = "SELECT c.published, c.lastModified, c.status, c.cveDescription, c.exploitabilityScore,
+        c.impactScore, c.baseScore, cat.categoryName, v.version, s.company, s.softwareName
+        FROM cve c 
+        LEFT JOIN cve_version cv ON cv.cveId = c.cveId 
+        LEFT JOIN version v ON v.versionId = cv.versionId 
+        LEFT JOIN software s ON s.softwareId = v.softwareId 
+        LEFT JOIN cve_category cc ON cc.cveId = c.cveId 
+        LEFT JOIN category cat ON cat.categoryId = cc.categoryId
+        WHERE c.cveNumber = :cveNum
+        GROUP BY c.cveId;";
+
+        $stmt = $db->prepare($sql);
+        $stmt->execute(["cveNum" => $cveNumber]);
+
+
+        $response["result"] = $stmt->fetch();
 
     } catch (\Throwable $th) {
         $response["code"] = 500;
@@ -124,11 +164,14 @@ function searchCveWithCpe($cpe) : Array|Error {
 
 
         $respNistJSON = json_decode($respNist);
-        $cve = $respNistJSON->vulnerabilities;
 
-        if ($cve == null) {
+        if ($respNistJSON->vulnerabilities == null) {
             throw new Exception("Aucun CVE trouvé pour ce CPE: " . $cpe, 1);
         }
+
+
+        $cve = $respNistJSON->vulnerabilities;
+
 
         return $cve;
 }

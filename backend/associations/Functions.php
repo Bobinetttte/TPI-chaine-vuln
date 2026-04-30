@@ -57,7 +57,7 @@ function createChains($cves) {
         If no valid chain exists, return an empty array [].
 
         If you recieve a lot of CVE, make a maxiumum of 5 associations.
-        Remember, an association can have at least 2 cve but can have more. But never twice the same.
+        Remember, an association can have at least 2 cve but can have more for exemple 2/3/4/5. But never twice the same.
         Remember, the ultimate goal for a chain is that the user can become root or administrator on the target.
 
         It is better to utilise differente software/OS/hardware CVE than 3 CVE of one same software/OS/hardware.
@@ -133,7 +133,7 @@ function createChains($cves) {
 
         return json_decode($result);
     } catch (\Throwable $th) {
-        "Erreur : " . $th->getMessage();
+        throw new Exception("Erreur : " . $th->getMessage(), 1);
     }
 }
 
@@ -205,7 +205,7 @@ function saveChain($chain) {
 
 
     } catch (\Throwable $th) {
-        "Erreur : " . $th->getMessage();
+        throw new Exception("Erreur : " . $th->getMessage(), 1);
     }
 }
 
@@ -358,13 +358,15 @@ function getAssociation($associationId) : Array|Error {
 
         $association["score"] = $assoScore["score"];
 
+        $association["idAsso"] = $associationId;
+
 
         $response = $association;
 
         return $response;
 
     } catch (\Throwable $th) {
-        "Erreur : " . $th->getMessage();
+        throw new Exception("Erreur : " . $th->getMessage(), 1);
     }
 }
 
@@ -393,6 +395,90 @@ function getTenAssociationIds() : Array|Error {
         return $assoIds;
 
     } catch (\Throwable $th) {
-        "Erreur : " . $th->getMessage();
+        throw new Exception("Erreur : " . $th->getMessage(), 1);
+    }
+}
+
+/**
+ * Met à jour le score d'une association
+ * @param Int $associationId : Id de l'association cible
+ * @param String $action : action souhaitée (up/down)
+ */
+function updateAssociation($associationId, $action) {
+    try {
+
+        $db = connectDb();
+
+        if ($action == "up") {
+
+            // Augmenter le score de 1
+            $sql = "UPDATE association SET score = score + 1 WHERE associationId = :assoId ;";
+            
+            $stmt = $db->prepare($sql);
+            $stmt->execute(["assoId" => $associationId]);
+            
+        }
+        else {
+            // Diminuer le score de 1
+            $sql = "UPDATE association SET score = score - 1 WHERE associationId = :assoId ;";
+            
+            $stmt = $db->prepare($sql);
+            $stmt->execute(["assoId" => $associationId]);
+            
+        }
+        
+        
+    } catch (\Throwable $th) {
+        throw new Exception("Erreur : " . $th->getMessage(), 1);
+    }
+
+}
+
+
+function getAllDataAssociation($associationId) {
+
+    try {
+        $response["base"] = getAssociation($associationId);
+
+
+        $db = connectDb();
+
+
+        foreach ($response["base"]["cvesId"] as $key => $cve) {
+            //Obtenir les cveNumber et categories de tous les CVE de l'association
+            $sql = "SELECT 
+                c.cveNumber,
+                MIN(cat.categoryName) AS categoryName
+                FROM cve c
+                LEFT JOIN cve_category cc ON cc.cveId = c.cveId
+                LEFT JOIN category cat ON cat.categoryId = cc.categoryId
+                WHERE c.cveId = :cveId;";
+
+            $stmt = $db->prepare($sql);
+            $stmt->execute([
+                'cveId' => $cve["cveId"]
+            ]);
+
+            $response["cves"][] = $stmt->fetch();
+
+        }
+        
+        //Obtenir les cveNumber et categories de tous les CVE de l'association
+        $sql = "SELECT  explanation
+            FROM association
+            WHERE associationId = :assoId";
+
+        $stmt = $db->prepare($sql);
+        $stmt->execute([
+            'assoId' => $associationId
+        ]);
+
+        $response["explanation"] = $stmt->fetch();
+
+
+        return $response;
+
+    } catch (\Throwable $th) {
+        throw new Exception("Erreur : " . $th->getMessage(), 1);
     }
 }

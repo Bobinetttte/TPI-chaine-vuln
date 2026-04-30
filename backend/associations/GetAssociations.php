@@ -8,17 +8,25 @@ $method = $_SERVER['REQUEST_METHOD'];
 switch ($method) {
     case 'GET':
             try {
+                $associationId = filter_input(INPUT_GET, "associationId", FILTER_VALIDATE_INT);
 
 
-                $associationsIds = getTenAssociationIds();
-                foreach ($associationsIds as $key => $assoId) {
-                    $associations[] = getAssociation($assoId["associationId"]);
+                if (isset($associationId)) {
+                    $response["result"] = getAllDataAssociation($associationId);
+                }
+                else {
+
+                    $associationsIds = getTenAssociationIds();
+                    foreach ($associationsIds as $key => $assoId) {
+                        $associations[] = getAssociation($assoId["associationId"]);
+                    }
+
+                    $response["result"]["associations"] = $associations;
+
                 }
 
                 $response["code"] = 200;
-                $response["result"]["associations"] = $associations;
-
-
+                
             } catch (\Throwable $th) {
                 $response["code"] = 400;
                 $response["result"]["error"] = "Erreur: " . $th;
