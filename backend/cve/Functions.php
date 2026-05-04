@@ -82,7 +82,7 @@ function getOneCve($cveNumber) : Array {
 }
 
 /**
- * Renvoie tout les CVE selon le nom du logiciel rechercher et sa version
+ * Renvoie tout les CVE selon le nom du logiciel recherché et sa version
  * @param String $software : Nom du logiciel
  * @param String $version : Version du logiciel
  * @return Array CVE ou une erreur
@@ -177,7 +177,7 @@ function searchCveWithCpe($cpe) : Array|Error {
 }
 
 /**
- * Renvoie touts les CVE traité avec leur catégorie déterminer par le LLM et les sauvegarde dans la bdd
+ * Renvoie tous les CVE traité avec leur catégorie déterminer par le LLM et les sauvegarde dans la bdd
  * @param String $softName : Nom du logiciel
  * @param String $version : Version du logiciel
  * @return Array Retourne touts les CVE traité avec leur catégorie ou une erreur

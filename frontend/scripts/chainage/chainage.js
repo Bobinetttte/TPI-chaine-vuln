@@ -29,7 +29,15 @@ buttonAdd.addEventListener("click", (event) => {
         softwares.innerHTML = "";
 
         softv.forEach(soft => {
-            softwares.innerHTML += "<div class='items'><p>" + soft[0] + " " + soft[1] + "</p></div>";
+            const div = document.createElement("div");
+            div.className = "items";
+
+            const p = document.createElement("p");
+            p.textContent = soft[0] + " " + soft[1];
+
+            div.appendChild(p);
+            softwares.appendChild(div);
+
         });
 
         // Supprime l'erreur afficher si le formulaire est remplit

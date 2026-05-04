@@ -12,6 +12,10 @@ switch ($method) {
                 $assoId = filter_input(INPUT_GET, "id", FILTER_VALIDATE_INT);
                 $action = filter_input(INPUT_GET, "action", FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 
+                if (!isset($assoId)) {
+                    throw new Exception("Id non précisé", 1);
+                }
+
                 if ($action != "up" && $action != "down") {
                     throw new Exception("Action mal formaté", 1);
                 }
