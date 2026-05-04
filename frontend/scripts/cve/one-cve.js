@@ -14,6 +14,7 @@ const description = document.querySelector("#cve-description")
 let params = new URLSearchParams(document.location.search);
 let cveNumber = params.get("cveNumber");
 
+document.title = cveNumber;
 title.textContent = cveNumber;
 
 let result = await searchOneCVE(cveNumber);
