@@ -1,3 +1,6 @@
+-- CHANGER LE MOT DE PASSE DANS L'AVANT DERNIERE LIGNE
+-- RENOMMER LE FICHIER EN init.sql
+
 -- phpMyAdmin SQL Dump
 -- version 5.2.3
 -- https://www.phpmyadmin.net/
