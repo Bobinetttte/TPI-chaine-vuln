@@ -62,6 +62,8 @@ function createChains($cves) {
 
         It is better to utilise differente software/OS/hardware CVE than 3 CVE of one same software/OS/hardware.
 
+        Your ultimate goal is to become root on the system. If you see an RCE and a privilege escalation, prioritise it.
+
         Return only valid JSON.
         Answer in french.
         ';
