@@ -178,7 +178,7 @@ async function createAsso(cveList) {
 async function updateAssociation(idAsso, action) {
 
     const association = await fetch("http://api.tpi.local/associations/UpdateAssociation.php?id=" + idAsso + "&action=" + action, {
-        method: "UPDATE",
+        method: "PUT",
     });
 
 }

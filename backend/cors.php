@@ -1,6 +1,6 @@
 <?php
 header("Access-Control-Allow-Origin: http://tpi.local");
-header("Access-Control-Allow-Methods: GET, POST, UPDATE, OPTIONS");
+header("Access-Control-Allow-Methods: GET, POST, PUT, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization");
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {

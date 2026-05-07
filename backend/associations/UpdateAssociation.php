@@ -6,7 +6,7 @@ require_once("./../PDOConnection.php");
 // Récupérer la méthode
 $method = $_SERVER['REQUEST_METHOD'];
 switch ($method) {
-    case 'UPDATE':
+    case 'PUT':
             try {
 
                 $assoId = filter_input(INPUT_GET, "id", FILTER_VALIDATE_INT);
